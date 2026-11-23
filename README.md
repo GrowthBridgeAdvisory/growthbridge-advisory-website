@@ -1,47 +1,54 @@
 # Growth Bridge Advisory website
 
-A responsive, static company website prepared for GitHub Pages and `growthbridgeadvisory.com`.
+Responsive static website for GitHub Pages and `growthbridgeadvisory.com`. The contact form is connected to the Google Apps Script web-app endpoint supplied by the site owner and submits enquiry data as JSON.
 
 ## Included
-- Responsive single-page corporate website
-- Company logo extracted from the supplied company profile
-- Services and delivery approach based on the supplied profile
-- Contact form that opens the visitor's email application (no backend or data storage)
-- `CNAME` file for `growthbridgeadvisory.com`
-- SEO title, description and social metadata
+- Responsive corporate website and supplied company logo
+- Company services, delivery approach and commitments
+- Contact form with name, work email, phone, company, service and message
+- Google Apps Script submission integration
+- Basic client-side validation and a honeypot field
+- `CNAME` for `growthbridgeadvisory.com` and `.nojekyll`
 
-## Publish to GitHub Pages
-1. Create a new GitHub repository, for example `growthbridge-advisory-website`.
-2. Upload the **contents** of this folder (not the enclosing folder) to the repository's root.
-3. In GitHub, open **Settings → Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**, select `main` and `/ (root)`, then Save.
-5. The repository already includes a `CNAME` file for `growthbridgeadvisory.com`.
-6. In **Settings → Pages → Custom domain**, enter `growthbridgeadvisory.com` if it is not already populated, and save.
-7. After DNS has propagated and GitHub has issued the certificate, enable **Enforce HTTPS**.
+## Publish/update on GitHub Pages
+1. Extract this ZIP.
+2. Copy the **contents** of `growthbridge-website` into the root of your local Git repository (the same folder containing `.git`).
+3. Review the changed files with `git status`.
+4. Commit and push to the `main` branch.
+5. GitHub Pages should deploy automatically from `main` / root.
 
-## GoDaddy DNS records
-In GoDaddy → Domain Portfolio → `growthbridgeadvisory.com` → DNS, configure:
+Example commands, when run from your Git repository root:
 
-| Type | Name | Value |
-|---|---|---|
-| A | @ | 185.199.108.153 |
-| A | @ | 185.199.109.153 |
-| A | @ | 185.199.110.153 |
-| A | @ | 185.199.111.153 |
-| CNAME | www | YOUR-GITHUB-USERNAME.github.io |
+```bash
+git add -A
+git commit -m "Connect website enquiry form to Google Sheets"
+git push origin main
+```
 
-Replace `YOUR-GITHUB-USERNAME` with the GitHub account or organization that owns the Pages site. Do not add the repository name to the CNAME target. Remove conflicting old `A` records for `@` and conflicting `CNAME` records for `www`. Keep MX records and other email-related DNS records intact.
+Do not overwrite your `.git` folder. Keep the `CNAME` file containing exactly `growthbridgeadvisory.com`.
 
-DNS changes can take up to 24 hours. GitHub recommends configuring the custom domain in repository settings and verifying ownership before DNS configuration. See:
-- https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-your-custom-domain-for-github-pages
-- https://www.godaddy.com/en-in/help/add-an-a-record-19238
-- https://www.godaddy.com/en/help/add-a-cname-record-19236
+## Google Apps Script integration
+The website posts JSON to the Apps Script `/exec` URL configured in `script.js`. The payload fields are:
 
-## Important content notes before launch
-- Confirm the public contact email address. The current site uses `ritusingh@growthbridgeadvisory.com`, based on the email supplied with the request.
-- No phone number, office address, named team biographies, client logos, testimonials or case studies were present in the source profile, so none have been invented.
-- The AI-enabled HR & Process Automation section is explicitly labelled as a development roadmap, consistent with the supplied company profile.
-- The contact form uses `mailto:` and therefore requires the visitor to have an email application configured. For a server-backed form, connect a form service or backend before launch.
+- `name` (required)
+- `email` (required)
+- `phone` (optional)
+- `company` (optional)
+- `service` (required)
+- `message` (required)
+- `source`
+
+The Apps Script `doPost(e)` must parse `JSON.parse(e.postData.contents)` and write these fields to the target spreadsheet. The deployed web app must be accessible to website visitors (typically **Execute as: Me** and **Who has access: Anyone**). If you change the Apps Script code, create a new deployment version or update the existing deployment so the `/exec` endpoint runs the latest version.
+
+### Important response limitation
+The browser sends the request in `no-cors` mode to avoid a cross-origin preflight. Browsers do not expose the Apps Script response body/status to this page, so the page can report that the request was dispatched but cannot independently verify that a row was written. After publishing, submit a test enquiry and confirm that it appears in the Google Sheet. For stronger delivery confirmation, add a same-origin server/proxy or redesign the Apps Script integration to use a verifiable response flow.
+
+## Security and operations
+- The Apps Script endpoint is public by design; validate and sanitize all fields in `doPost` before writing to the spreadsheet.
+- Add server-side rate limiting or stronger bot protection before relying on the form for high-volume public traffic. A client-side honeypot is only a basic deterrent.
+- Do not collect sensitive personal information in the public enquiry form.
+- Restrict access to the Google Sheet to authorised business users.
+- The website does not expose the spreadsheet ID or Google account credentials.
 
 ## Local preview
-Open `index.html` in a browser. No build step or package installation is required.
+Open `index.html` in a browser. No build step is required. The live form sends to the configured Apps Script endpoint, so use a test enquiry only after checking the destination spreadsheet.

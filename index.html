@@ -123,12 +123,16 @@
           <p class="contact-small">Growth Bridge Advisory<br>Building People. Powering Possibilities.</p>
         </div>
         <form class="contact-form" id="contactForm">
-          <label for="name">Your name</label><input id="name" name="name" placeholder="How should we address you?" required>
-          <label for="email">Work email</label><input id="email" name="email" type="email" placeholder="you@company.com" required>
-          <label for="interest">What would you like to discuss?</label><select id="interest" name="interest"><option>Talent Acquisition & Recruitment</option><option>HR Advisory & People Processes</option><option>Recruitment Analytics & Workforce Reporting</option><option>Early-Career & Talent Pipeline Programmes</option><option>AI-enabled HR & Process Automation</option><option>Something else</option></select>
-          <label for="message">A little about your requirement</label><textarea id="message" name="message" rows="4" placeholder="Share a few details about the challenge or goal..." required></textarea>
-          <button class="button button-gold submit-button" type="submit">Prepare email <span>↗</span></button>
-          <small class="form-note">Your email app will open with your message ready to send. No information is stored on this website.</small>
+          <label for="name">Your name</label><input id="name" name="name" autocomplete="name" maxlength="120" placeholder="How should we address you?" required>
+          <label for="email">Work email</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@company.com" required>
+          <label for="phone">Phone number <span class="optional-label">(optional)</span></label><input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="30" placeholder="Your contact number">
+          <label for="company">Company <span class="optional-label">(optional)</span></label><input id="company" name="company" autocomplete="organization" maxlength="160" placeholder="Your organisation">
+          <label for="interest">What would you like to discuss?</label><select id="interest" name="service" required><option value="Talent Acquisition & Recruitment">Talent Acquisition & Recruitment</option><option value="HR Advisory & People Processes">HR Advisory & People Processes</option><option value="Recruitment Analytics & Workforce Reporting">Recruitment Analytics & Workforce Reporting</option><option value="Early-Career & Talent Pipeline Programmes">Early-Career & Talent Pipeline Programmes</option><option value="AI-enabled HR & Process Automation">AI-enabled HR & Process Automation</option><option value="Something else">Something else</option></select>
+          <label for="message">A little about your requirement</label><textarea id="message" name="message" rows="4" maxlength="3000" placeholder="Share a few details about the challenge or goal..." required></textarea>
+          <div class="form-trap" aria-hidden="true"><label for="website">Leave this field empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div>
+          <button class="button button-gold submit-button" type="submit"><span class="button-label">Send enquiry</span> <span aria-hidden="true">↗</span></button>
+          <p class="form-status" id="formStatus" role="status" aria-live="polite"></p>
+          <small class="form-note">Your enquiry is sent securely to our Google Sheets-backed enquiry tracker. We’ll use these details to respond to your request.</small>
         </form>
       </div>
     </section>
