@@ -52,3 +52,16 @@ The browser sends the request in `no-cors` mode to avoid a cross-origin prefligh
 
 ## Local preview
 Open `index.html` in a browser. No build step is required. The live form sends to the configured Apps Script endpoint, so use a test enquiry only after checking the destination spreadsheet.
+
+## Google Sheets enquiry form — response verification
+
+The contact form is configured to POST JSON to the supplied Google Apps Script `/exec` URL. The browser now uses a CORS-readable request and only displays the success message when the Apps Script response is valid JSON containing `success: true`. It deliberately does **not** use `mode: "no-cors"`, because an opaque response cannot confirm that a spreadsheet row was saved.
+
+The deployed Apps Script must:
+- Be deployed as a Web App, executing as the spreadsheet-owning account.
+- Be accessible to website visitors (typically **Anyone** for this public form).
+- Implement `doPost(e)` and parse `e.postData.contents` as JSON.
+- Write the submission to the intended spreadsheet/tab before returning JSON.
+- Return a JSON response such as `{"success":true,"submissionId":"..."}` with `ContentService.MimeType.JSON` after a successful write, or `{"success":false,"message":"..."}` when it fails.
+
+If the browser console reports a CORS error, the Apps Script response is not readable cross-origin in the current deployment. In that case the page will show an error rather than falsely claiming success. A small same-origin proxy (for example, a Cloudflare Worker) is then needed to provide reliable browser-readable acknowledgement; do not switch back to `no-cors` and claim success.

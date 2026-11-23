@@ -1,84 +1,110 @@
 const toggle = document.querySelector(".menu-toggle");
 const nav = document.querySelector(".nav-links");
 
-toggle.addEventListener("click", () => {
-  const open = nav.classList.toggle("open");
-  toggle.setAttribute("aria-expanded", String(open));
-  toggle.textContent = open ? "×" : "☰";
-});
-
-document.querySelectorAll(".nav-links a").forEach((link) => {
-  link.addEventListener("click", () => {
-    nav.classList.remove("open");
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.textContent = "☰";
+if (toggle && nav) {
+  toggle.addEventListener("click", () => {
+    const open = nav.classList.toggle("open");
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.textContent = open ? "×" : "☰";
   });
-});
 
-document.getElementById("year").textContent = new Date().getFullYear();
+  document.querySelectorAll(".nav-links a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.textContent = "☰";
+    });
+  });
+}
 
-// Google Apps Script web-app endpoint supplied for Growth Bridge Advisory.
+const year = document.getElementById("year");
+if (year) year.textContent = new Date().getFullYear();
+
+// Google Apps Script Web App endpoint supplied for Growth Bridge Advisory.
 const GOOGLE_SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbzcMOxyJfsUSU2xP2t6iWDK1Bstly-bjsSPmkgreI0_2VXMxrOT0Ki3vE6gv91lk6jE4w/exec";
 
 const contactForm = document.getElementById("contactForm");
 const formStatus = document.getElementById("formStatus");
-const submitButton = contactForm.querySelector('button[type="submit"]');
-const buttonLabel = submitButton.querySelector(".button-label");
 
-contactForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (contactForm && formStatus) {
+  const submitButton = contactForm.querySelector('button[type="submit"]');
+  const buttonLabel = submitButton?.querySelector(".button-label");
+  const originalButtonLabel = buttonLabel?.textContent || "Send enquiry";
 
-  // Simple honeypot: silently ignore automated submissions that fill this field.
-  if (contactForm.elements.website.value.trim()) {
-    formStatus.textContent = "Thank you. Your enquiry has been received.";
-    formStatus.className = "form-status success";
-    contactForm.reset();
-    return;
+  function showStatus(message, type) {
+    formStatus.textContent = message;
+    formStatus.className = `form-status ${type}`;
   }
 
-  if (!contactForm.reportValidity()) return;
+  contactForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  const formData = new FormData(contactForm);
-  const payload = {
-    name: String(formData.get("name") || "").trim(),
-    email: String(formData.get("email") || "").trim(),
-    phone: String(formData.get("phone") || "").trim(),
-    company: String(formData.get("company") || "").trim(),
-    service: String(formData.get("service") || "").trim(),
-    message: String(formData.get("message") || "").trim(),
-    source: "Growth Bridge Advisory website"
-  };
+    if (!contactForm.reportValidity()) return;
 
-  if (!payload.name || !payload.email || !payload.message) {
-    formStatus.textContent = "Please complete your name, email and requirement.";
-    formStatus.className = "form-status error";
-    return;
-  }
+    // Honeypot: reject automated submissions without sending them to the sheet.
+    const honeypot = contactForm.elements.website;
+    if (honeypot && honeypot.value.trim()) {
+      showStatus("We couldn't process this submission. Please refresh and try again.", "error");
+      return;
+    }
 
-  submitButton.disabled = true;
-  buttonLabel.textContent = "Sending…";
-  formStatus.textContent = "Sending your enquiry…";
-  formStatus.className = "form-status pending";
+    const formData = new FormData(contactForm);
+    const payload = {
+      name: String(formData.get("name") || "").trim(),
+      email: String(formData.get("email") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      company: String(formData.get("company") || "").trim(),
+      service: String(formData.get("service") || "").trim(),
+      message: String(formData.get("message") || "").trim(),
+      source: "Growth Bridge Advisory website"
+    };
 
-  try {
-    // text/plain keeps this a simple cross-origin request and avoids a CORS preflight.
-    // Apps Script ContentService responses are redirected and are opaque to no-cors fetch.
-    await fetch(GOOGLE_SHEETS_ENDPOINT, {
-      method: "POST",
-      mode: "no-cors",
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload)
-    });
+    if (!payload.name || !payload.email || !payload.service || !payload.message) {
+      showStatus("Please complete your name, email, service and requirement.", "error");
+      return;
+    }
 
-    formStatus.textContent = "Your enquiry request has been sent. Thank you for contacting Growth Bridge Advisory. We’ll be in touch.";
-    formStatus.className = "form-status success";
-    contactForm.reset();
-  } catch (error) {
-    formStatus.textContent = "We couldn’t send your enquiry. Please try again or email ritusingh@growthbridgeadvisory.com.";
-    formStatus.className = "form-status error";
-  } finally {
-    submitButton.disabled = false;
-    buttonLabel.textContent = "Send enquiry";
-  }
-});
+    if (submitButton) submitButton.disabled = true;
+    if (buttonLabel) buttonLabel.textContent = "Submitting…";
+    showStatus("Submitting your enquiry securely…", "pending");
+
+    try {
+      // IMPORTANT: Do not use no-cors here. It hides the server response and
+      // can make a failed spreadsheet write look successful to the visitor.
+      // This request expects the Apps Script doPost endpoint to return JSON
+      // with { success: true } after appendRow() completes.
+      const response = await fetch(GOOGLE_SHEETS_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`The enquiry service returned HTTP ${response.status}.`);
+      }
+
+      const result = await response.json();
+
+      if (!result || result.success !== true) {
+        throw new Error(result?.message || "The enquiry could not be saved.");
+      }
+
+      showStatus(
+        `Thank you. Your enquiry has been saved successfully. Reference: ${result.submissionId || "received"}. We’ll be in touch.`,
+        "success"
+      );
+      contactForm.reset();
+    } catch (error) {
+      console.error("Growth Bridge enquiry submission error:", error);
+      showStatus(
+        "We couldn't confirm that your enquiry was saved. Please try again, or email ritusingh@growthbridgeadvisory.com. If you already submitted once, please check with us before resubmitting.",
+        "error"
+      );
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+      if (buttonLabel) buttonLabel.textContent = originalButtonLabel;
+    }
+  });
+}
